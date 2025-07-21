@@ -33,8 +33,8 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Přizpůsobené paddingy pro nové rozložení textu
-      const paddingLeft = 60;
-      const paddingRight = 20;
+      const paddingLeft = 20; 
+      const paddingRight = 70; 
       const paddingTop = 45; 
       const paddingBottom = 60; 
 
@@ -47,11 +47,7 @@
       const maxTime = Math.max(...times);
       const prices = candles.flatMap(c => [c.l, c.h]);
       const minPrice = Math.floor(Math.min(...prices) / 500) * 500;
-      // Zajistíme, že minPrice je vždy nejnižší cena z dat, a ne nulová nebo nižší,
-      // pokud se rozsah grafu přiblíží nule
       const adjustedMinPrice = Math.max(minPrice, Math.min(...prices)); 
-
-
       const maxPrice = Math.ceil(Math.max(...prices) / 500) * 500;
 
       const scaleX = w / (maxTime - minTime);
@@ -59,39 +55,29 @@
 
       ctx.strokeStyle = 'black';
       ctx.fillStyle = 'black';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
+      // ctx.textAlign a ctx.textBaseline budou nastaveny specificky pro každou část
 
-      // Y osa (plná vertikální čára)
+      // Y osa (plná vertikální čára) na PRAVÉ STRANĚ
+      const axisY_XPosition = paddingLeft + w; 
       ctx.beginPath();
-      ctx.moveTo(paddingLeft, paddingTop);
-      ctx.lineTo(paddingLeft, paddingTop + h);
+      ctx.moveTo(axisY_XPosition, paddingTop);
+      ctx.lineTo(axisY_XPosition, paddingTop + h);
       ctx.stroke();
 
-      // Horizontální čárkované linie a Y osa (popisky cen)
-      ctx.setLineDash([2, 2]); 
-      ctx.font = '12px Roboto, sans-serif'; // Ještě více zvětšené písmo pro Y osu
+      // Y osa (popisky cen) na PRAVÉ STRANĚ od osy
+      ctx.font = '12px Roboto, sans-serif'; 
+      ctx.textAlign = 'left'; 
+      ctx.textBaseline = 'middle'; 
+
       for (let p = minPrice; p <= maxPrice; p += 500) { 
         const y = paddingTop + h - (p - adjustedMinPrice) * scaleY; 
         
-        // Posunutí textu ceny, aby nebyl pod osou
-        // Měníme base line pro nejnižší cenu, aby se zobrazovala nad linkou osy
-        if (p === minPrice) { // Pro nejnižší cenu na ose
+        if (p === minPrice) { 
           ctx.textBaseline = 'bottom'; 
-          ctx.fillText(p.toLocaleString(), paddingLeft - 5, y + 2); 
+          ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y + 2); 
           ctx.textBaseline = 'middle'; 
         } else {
-          ctx.fillText(p.toLocaleString(), paddingLeft - 5, y); 
-        }
-        
-        // Vykreslit čárkovanou čáru POUZE pokud NENÍ na spodní hranici grafu
-        // A pokud není cena pod viditelným rozsahem osy (adjustedMinPrice)
-        // Toto zajišťuje, že se spodní čárkovaná čára na ose X nevykreslí
-        if (p !== minPrice) { // Upraveno, aby se spodní čárkovaná čára nikdy nevykreslila
-          ctx.beginPath();
-          ctx.moveTo(paddingLeft, y);
-          ctx.lineTo(paddingLeft + w, y); 
-          ctx.stroke();
+          ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y); 
         }
       }
       ctx.setLineDash([]); 
@@ -111,7 +97,7 @@
         const yHigh = paddingTop + h - (c.h - adjustedMinPrice) * scaleY; 
         const yLow = paddingTop + h - (c.l - adjustedMinPrice) * scaleY;   
 
-        if (x - barWidth / 2 < paddingLeft) return;
+        if (x - barWidth / 2 < paddingLeft || x + barWidth / 2 > paddingLeft + w) return; 
 
         ctx.strokeStyle = 'black'; 
         ctx.beginPath();
@@ -134,7 +120,7 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = 'black';
-      ctx.font = '12px Roboto, sans-serif'; // Ještě více zvětšené písmo pro X osu (stejné jako Y)
+      ctx.font = '12px Roboto, sans-serif'; 
 
       const firstHourTimestamp = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60);
 
@@ -150,9 +136,32 @@
         ctx.fillText(label, x, paddingTop + h + 5);
       }
 
+      // --- Nová vodorovná čárkovaná linka na aktuální ceně ---
+      const currentPrice = candles[candles.length - 1].c; 
+      const yCurrentPrice = paddingTop + h - (currentPrice - adjustedMinPrice) * scaleY;
+
+      ctx.setLineDash([5, 5]); 
+      ctx.strokeStyle = 'black';
+      ctx.beginPath();
+      ctx.moveTo(paddingLeft, yCurrentPrice);
+      ctx.lineTo(paddingLeft + w, yCurrentPrice);
+      ctx.stroke();
+      ctx.setLineDash([]); 
+
+      // --- Zobrazení aktuální ceny vlevo u čárkované linky (UPRAVENO) ---
+      const currentPriceToDisplay = Math.round(currentPrice); // Zaokrouhlení na celé číslo
+      
+      ctx.fillStyle = 'black';
+      ctx.font = '12px Roboto, sans-serif'; // Normální (netučné) písmo
+      ctx.textAlign = 'left'; 
+      ctx.textBaseline = 'bottom'; // Nastavíme na 'bottom', aby se text vykreslil NAD Y-souřadnicí
+
+      // X pozice je stále 5px od levého okraje, ale Y pozice je o 5px výše (nad linkou)
+      ctx.fillText(currentPriceToDisplay.toLocaleString(), 5, yCurrentPrice - 5); 
+
       // --- Horní řádek textu: Ticker, Nákupní cena, Aktuální cena, Profit ---
       const averageBuyPrice = 78000;
-      const currentPrice = candles[candles.length - 1].c;
+      // const currentPrice = candles[candles.length - 1].c; // Už definováno výše
 
       let profitPercentage = 0;
       if (averageBuyPrice > 0) {
