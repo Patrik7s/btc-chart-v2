@@ -1,7 +1,7 @@
 {
   "name": "btc-chart",
   "version": "1.0.0",
-  "description": "BTC Chart generator for E-Ink display, including Puppeteer and Sharp for image processing.",
+  "description": "BTC Chart generator for E-Ink display, including Node-Canvas for direct rendering.",
   "main": "render.js",
   "scripts": {
     "start": "node render.js"
@@ -10,14 +10,13 @@
     "btc",
     "chart",
     "e-ink",
-    "puppeteer",
-    "sharp",
+    "node-canvas",
     "crypto"
   ],
   "author": "Patrik7s",
   "license": "ISC",
   "dependencies": {
-    "puppeteer": "^24.14.0", 
-    "sharp": "^0.33.0"       
+    "canvas": "^2.11.2", 
+    "date-fns": "^3.6.0"  
   }
 }
