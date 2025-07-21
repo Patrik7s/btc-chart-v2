@@ -1,0 +1,43 @@
+name: Deploy E-Ink Chart
+
+on:
+  schedule:
+    # Spouštět každých 5 minut
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Umožní ruční spuštění workflow z GitHubu (pro testování)
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate chart image
+        run: node render.js
+
+      - name: Deploy image to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          destination_dir: images
+          force_orphan: true
+
+      - name: Get GitHub Pages URL
+        id: gh_pages_url
+        run: echo "URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/images/btc-chart.png" >> $GITHUB_OUTPUT
+        if: success()
+
+      - name: Print deployed URL
+        run: echo "Graf je dostupný na: ${{ steps.gh_pages_url.outputs.URL }}"
+        if: success()
