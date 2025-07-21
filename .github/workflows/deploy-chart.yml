@@ -4,7 +4,7 @@ on:
   schedule:
     # Spouštět každých 5 minut
     - cron: '*/5 * * * *'
-  workflow_dispatch: # Umožní ruční spuštění workflow z GitHubu
+  workflow_dispatch: # Umožní ruční spuštění workflow z GitHubu (pro testování)
 
 jobs:
   build-and-deploy:
@@ -16,30 +16,27 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Použijte stabilní verzi Node.js, která je kompatibilní s Puppeteer
-          cache: 'npm' # Zrychlí instalaci závislostí
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install # Nainstaluje Puppeteer podle package.json
+        run: npm install
 
       - name: Generate chart image
-        run: node render.js # SPUSŤTE VÁŠ SKRIPT!
-        env: # Volitelné: Nastavení proměnných prostředí, pokud by render.js potřeboval
-          CHART_FILE: chart.html
-          OUTPUT_IMAGE: btc-chart.png
+        run: node render.js
 
       - name: Deploy image to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: . # Důležité: Pokud btc-chart.png je v kořenovém adresáři
-          destination_dir: images # Volitelné, ale dobré pro organizaci
+          publish_dir: . # Důležité: 'btc-chart.png' je v kořenovém adresáři
+          destination_dir: images # Obrázek bude dostupný pod /images/btc-chart.png na GitHub Pages
           force_orphan: true
 
       - name: Get GitHub Pages URL
         id: gh_pages_url
-        run: |
-          echo "URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/images/chart.png" >> $GITHUB_OUTPUT
+        # Zde je oprava: Odstraněn symbol '|' a příkaz je na stejném řádku jako 'run:'
+        run: echo "URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/images/btc-chart.png" >> $GITHUB_OUTPUT
         if: success()
 
       - name: Print deployed URL
