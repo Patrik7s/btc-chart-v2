@@ -1,43 +1,270 @@
 <!DOCTYPE html>
-<html>
+<html lang="cs">
 <head>
-  <meta charset="utf-8">
-  <title>BTC Candlestick</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <meta charset="UTF-8">
+  <title>BTCUSDT Chart</title>
   <style>
-    body { margin: 0; }
-    canvas { display: block; }
+    body { margin: 0; background: white; }
+    canvas { display: block; margin: auto; background: white; }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <canvas id="chart" width="648" height="480"></canvas>
   <script>
-    async function loadData() {
-      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=144');
-      const data = await res.json();
-      const candles = data.map(c => ({
-        x: new Date(c[0]),
-        o: parseFloat(c[1]),
-        h: parseFloat(c[2]),
-        l: parseFloat(c[3]),
-        c: parseFloat(c[4])
+    async function getData() {
+      const end = Math.floor(Date.now() / 1000);
+      const start = end - 12 * 60 * 60; // posledních 12 hodin
+      const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&startTime=${start * 1000}&endTime=${end * 1000}`;
+      const response = await fetch(url);
+      const raw = await response.json();
+      return raw.map(d => ({
+        t: d[0],
+        o: +d[1],
+        h: +d[2],
+        l: +d[3],
+        c: +d[4]
       }));
+    }
 
-      const ctx = document.getElementById('chart').getContext('2d');
-      new Chart(ctx, {
-        type: 'candlestick',
-        data: { datasets: [{ label: 'BTC/USDT 5m', data: candles }] },
-        options: {
-          responsive: false,
-          scales: {
-            x: { type: 'time', time: { unit: 'hour' } },
-            y: { beginAtZero: false }
-          }
+    function draw(candles) {
+      const canvas = document.getElementById('chart');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Přizpůsobené paddingy pro nové rozložení textu
+      const paddingLeft = 60;
+      const paddingRight = 20;
+      const paddingTop = 45; 
+      const paddingBottom = 60; 
+
+      const w = canvas.width - paddingLeft - paddingRight;
+      const h = canvas.height - paddingTop - paddingBottom;
+      const n = candles.length;
+
+      const times = candles.map(c => c.t);
+      const minTime = Math.min(...times);
+      const maxTime = Math.max(...times);
+      const prices = candles.flatMap(c => [c.l, c.h]);
+      const minPrice = Math.floor(Math.min(...prices) / 500) * 500;
+      // Zajistíme, že minPrice je vždy nejnižší cena z dat, a ne nulová nebo nižší,
+      // pokud se rozsah grafu přiblíží nule
+      const adjustedMinPrice = Math.max(minPrice, Math.min(...prices)); 
+
+
+      const maxPrice = Math.ceil(Math.max(...prices) / 500) * 500;
+
+      const scaleX = w / (maxTime - minTime);
+      const scaleY = h / (maxPrice - adjustedMinPrice); 
+
+      ctx.strokeStyle = 'black';
+      ctx.fillStyle = 'black';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      // Y osa (plná vertikální čára)
+      ctx.beginPath();
+      ctx.moveTo(paddingLeft, paddingTop);
+      ctx.lineTo(paddingLeft, paddingTop + h);
+      ctx.stroke();
+
+      // Horizontální čárkované linie a Y osa (popisky cen)
+      ctx.setLineDash([2, 2]); 
+      ctx.font = '12px Roboto, sans-serif'; // Ještě více zvětšené písmo pro Y osu
+      for (let p = minPrice; p <= maxPrice; p += 500) { 
+        const y = paddingTop + h - (p - adjustedMinPrice) * scaleY; 
+        
+        // Posunutí textu ceny, aby nebyl pod osou
+        // Měníme base line pro nejnižší cenu, aby se zobrazovala nad linkou osy
+        if (p === minPrice) { // Pro nejnižší cenu na ose
+          ctx.textBaseline = 'bottom'; 
+          ctx.fillText(p.toLocaleString(), paddingLeft - 5, y + 2); 
+          ctx.textBaseline = 'middle'; 
+        } else {
+          ctx.fillText(p.toLocaleString(), paddingLeft - 5, y); 
+        }
+        
+        // Vykreslit čárkovanou čáru POUZE pokud NENÍ na spodní hranici grafu
+        // A pokud není cena pod viditelným rozsahem osy (adjustedMinPrice)
+        // Toto zajišťuje, že se spodní čárkovaná čára na ose X nevykreslí
+        if (p !== minPrice) { // Upraveno, aby se spodní čárkovaná čára nikdy nevykreslila
+          ctx.beginPath();
+          ctx.moveTo(paddingLeft, y);
+          ctx.lineTo(paddingLeft + w, y); 
+          ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]); 
+
+      // X osa (plná vodorovná čára dole)
+      ctx.beginPath();
+      ctx.moveTo(paddingLeft, paddingTop + h);
+      ctx.lineTo(paddingLeft + w, paddingTop + h);
+      ctx.stroke();
+
+      // Candlesticky
+      const barWidth = Math.max(2, w / n * 0.6);
+      candles.forEach(c => {
+        const x = paddingLeft + (c.t - minTime) * scaleX;
+        const yOpen = paddingTop + h - (c.o - adjustedMinPrice) * scaleY; 
+        const yClose = paddingTop + h - (c.c - adjustedMinPrice) * scaleY; 
+        const yHigh = paddingTop + h - (c.h - adjustedMinPrice) * scaleY; 
+        const yLow = paddingTop + h - (c.l - adjustedMinPrice) * scaleY;   
+
+        if (x - barWidth / 2 < paddingLeft) return;
+
+        ctx.strokeStyle = 'black'; 
+        ctx.beginPath();
+        ctx.moveTo(x, yHigh);
+        ctx.lineTo(x, yLow);
+        ctx.stroke();
+
+        const xBar = x - barWidth / 2;
+        if (c.c >= c.o) {
+          ctx.fillStyle = 'black'; 
+          ctx.fillRect(xBar, yClose, barWidth, yOpen - yClose);
+        } else {
+          ctx.fillStyle = 'white'; 
+          ctx.fillRect(xBar, yClose, barWidth, yOpen - yClose);
+          ctx.strokeRect(xBar, yClose, barWidth, yOpen - yClose); 
         }
       });
+
+      // X osa (časy)
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'black';
+      ctx.font = '12px Roboto, sans-serif'; // Ještě více zvětšené písmo pro X osu (stejné jako Y)
+
+      const firstHourTimestamp = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60);
+
+      for (let t = firstHourTimestamp; t <= maxTime; t += (1000 * 60 * 60)) {
+        const x = paddingLeft + (t - minTime) * scaleX;
+
+        if (x < paddingLeft || x > paddingLeft + w) continue;
+
+        const dateAtTime = new Date(t);
+        const hour = dateAtTime.getHours(); 
+        const label = `${('0' + hour).slice(-2)}:00`;
+
+        ctx.fillText(label, x, paddingTop + h + 5);
+      }
+
+      // --- Horní řádek textu: Ticker, Nákupní cena, Aktuální cena, Profit ---
+      const averageBuyPrice = 78000;
+      const currentPrice = candles[candles.length - 1].c;
+
+      let profitPercentage = 0;
+      if (averageBuyPrice > 0) {
+        profitPercentage = ((currentPrice - averageBuyPrice) / averageBuyPrice) * 100;
+      }
+
+      const currentPriceRounded = Math.round(currentPrice);
+
+      const tickerText = 'BTCUSDT';
+      const avgBuyPriceText = `Nákupní cena: ${averageBuyPrice.toLocaleString()} USDT`;
+      const currentPriceText = `Aktuální cena: ${currentPriceRounded.toLocaleString()} USDT`;
+      const profitFormattedText = `${profitPercentage.toFixed(2)}%`;
+
+      const textSegments = [
+          tickerText,
+          avgBuyPriceText,
+          currentPriceText,
+          `Profit: ${profitFormattedText}`
+      ];
+
+      const spacingBetweenSegments = 20;
+
+      let totalWidth = 0;
+      ctx.font = 'bold 12px Roboto, sans-serif';
+
+      const segmentWidths = textSegments.map(segment => {
+          const width = ctx.measureText(segment).width;
+          totalWidth += width;
+          return width;
+      });
+
+      totalWidth += (textSegments.length - 1) * spacingBetweenSegments;
+
+      const startX = (canvas.width / 2) - (totalWidth / 2);
+      const topRowY = 20;
+
+      let currentX = startX;
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'black';
+
+      ctx.fillText(tickerText, currentX, topRowY);
+      currentX += segmentWidths[0] + spacingBetweenSegments;
+
+      ctx.fillText(avgBuyPriceText, currentX, topRowY);
+      currentX += segmentWidths[1] + spacingBetweenSegments;
+
+      ctx.fillText(currentPriceText, currentX, topRowY);
+      currentX += segmentWidths[2] + spacingBetweenSegments;
+
+      if (profitPercentage >= 0) {
+          ctx.fillStyle = 'black';
+      } else {
+          ctx.fillStyle = 'red';
+      }
+      ctx.fillText(`Profit: ${profitFormattedText}`, currentX, topRowY);
+
+      // --- Spodní řádek textu: "Poslední aktualizace:", Datum, Čas a Timeframe ---
+      const lastCandleTime = new Date(candles[candles.length - 1].t);
+
+      const day = ('0' + lastCandleTime.getDate()).slice(-2);
+      const month = ('0' + (lastCandleTime.getMonth() + 1)).slice(-2);
+      const year = lastCandleTime.getFullYear();
+      const formattedDate = `${day}.${month}.${year}`;
+
+      const cestHours = lastCandleTime.getHours();
+      const cestMins = ('0' + lastCandleTime.getMinutes()).slice(-2);
+
+      const utcHours = lastCandleTime.getUTCHours();
+      const nyHours = (utcHours - 4 + 24) % 24;
+      const nyMins = ('0' + lastCandleTime.getUTCMinutes()).slice(-2);
+
+      const updateText = `Poslední aktualizace:`;
+      const timeAndDateText = `${formattedDate} ${cestHours}:${cestMins} CEST | ${nyHours}:${nyMins} NY`;
+      const timeframeText = `Time Frame: 15 minut`;
+
+      const bottomTextSegments = [
+          updateText,
+          timeAndDateText,
+          timeframeText
+      ];
+
+      let totalBottomWidth = 0;
+      ctx.font = '12px Roboto, sans-serif';
+
+      const bottomSegmentWidths = bottomTextSegments.map(segment => {
+          const width = ctx.measureText(segment).width;
+          totalBottomWidth += width;
+          return width;
+      });
+
+      const spacingBottomSegments = 20;
+      totalBottomWidth += (bottomTextSegments.length - 1) * spacingBottomSegments;
+
+      const bottomStartX = (canvas.width / 2) - (totalBottomWidth / 2);
+      const bottomTextY = canvas.height - 20;
+
+      let currentBottomX = bottomStartX;
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'black';
+
+      ctx.fillText(updateText, currentBottomX, bottomTextY);
+      currentBottomX += bottomSegmentWidths[0] + spacingBottomSegments;
+
+      ctx.fillText(timeAndDateText, currentBottomX, bottomTextY);
+      currentBottomX += bottomSegmentWidths[1] + spacingBottomSegments;
+
+      ctx.fillText(timeframeText, currentBottomX, bottomTextY);
     }
-    loadData();
+
+    getData().then(draw);
   </script>
 </body>
 </html>
