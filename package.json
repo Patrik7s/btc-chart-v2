@@ -1,0 +1,25 @@
+{
+  "name": "btc-chart",
+  "version": "1.0.0",
+  "description": "Automaticky generovaný graf",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Patrik7s/btc-chart.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Patrik7s/btc-chart/issues"
+  },
+  "homepage": "https://github.com/Patrik7s/btc-chart#readme",
+  "dependencies": {
+    "chart.js": "^4.5.0",
+    "chartjs-chart-financial": "^0.2.1",
+    "puppeteer": "^24.14.0"
+  }
+}

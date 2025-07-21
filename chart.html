@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BTC Candlestick</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="chart" width="648" height="480"></canvas>
+  <script>
+    async function loadData() {
+      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=144');
+      const data = await res.json();
+      const candles = data.map(c => ({
+        x: new Date(c[0]),
+        o: parseFloat(c[1]),
+        h: parseFloat(c[2]),
+        l: parseFloat(c[3]),
+        c: parseFloat(c[4])
+      }));
+
+      const ctx = document.getElementById('chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'candlestick',
+        data: { datasets: [{ label: 'BTC/USDT 5m', data: candles }] },
+        options: {
+          responsive: false,
+          scales: {
+            x: { type: 'time', time: { unit: 'hour' } },
+            y: { beginAtZero: false }
+          }
+        }
+      });
+    }
+    loadData();
+  </script>
+</body>
+</html>
