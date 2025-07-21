@@ -29,13 +29,12 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: . # Důležité: 'btc-chart.png' je v kořenovém adresáři
-          destination_dir: images # Obrázek bude dostupný pod /images/btc-chart.png na GitHub Pages
+          publish_dir: .
+          destination_dir: images
           force_orphan: true
 
       - name: Get GitHub Pages URL
         id: gh_pages_url
-        # Zde je oprava: Odstraněn symbol '|' a příkaz je na stejném řádku jako 'run:'
         run: echo "URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/images/btc-chart.png" >> $GITHUB_OUTPUT
         if: success()
 
