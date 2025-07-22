@@ -2,7 +2,7 @@ import { createCanvas, registerFont } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
-import sharp from 'sharp';
+import sharp from 'sharp'; 
 
 const width = 648;
 const height = 480;
