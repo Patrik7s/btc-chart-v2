@@ -15,15 +15,14 @@ ctx.imageSmoothingEnabled = false; // Pro vykreslování obrázků
 ctx.textDrawingMode = 'path'; // Výchozí pro text
 
 
-// --- Načtení fontu IBM Plex Mono ---
-const fontPathPlexMonoRegular = path.join(__dirname, 'fonts', 'IBMPlexMono-Regular.ttf');
-const fontPathPlexMonoBold = path.join(__dirname, 'fonts', 'IBMPlexMono-Bold.ttf');
+// --- Načtení fontu Terminus TTF ---
+const fontPathTerminus = path.join(__dirname, 'fonts', 'TerminusTTF-4.49.3.ttf');
 
 try {
-    registerFont(fontPathPlexMonoRegular, { family: 'IBM Plex Mono', weight: 'normal' });
-    registerFont(fontPathPlexMonoBold, { family: 'IBM Plex Mono', weight: 'bold' });
+    registerFont(fontPathTerminus, { family: 'TerminusTTF', weight: 'normal' });
+    registerFont(fontPathTerminus, { family: 'TerminusTTF', weight: 'bold' });
 } catch (error) {
-    console.warn(`Varování: Font IBM Plex Mono nebyl nalezen. Zkontrolujte cestu k souborům fontů. Použije se výchozí font. Chyba: ${error.message}`);
+    console.warn(`Varování: Font TerminusTTF nebyl nalezen. Zkontrolujte cestu k souborům fontů. Použije se výchozí font. Chyba: ${error.message}`);
 }
 
 // --- Funkce pro získání dat svíček z Binance ---
@@ -38,7 +37,7 @@ async function getBinanceCandlesData() {
     }));
 }
 
-// --- Funkce pro získání AKTUÁLNÍ TRŽNÍ CENY je ODSTRANĚNA ---
+// --- Funkce pro získání AKTUÁLNÍ TRŽNÍ CENY je ZDE ODSTRANĚNA, protože ji už nechceme používat ---
 
 
 // --- Hlavní funkce pro kreslení grafu ---
@@ -59,10 +58,11 @@ async function drawChart() {
         lastClosedCandlePrice = candles[candles.length - 2].c; 
     } catch (error) {
         console.error("Chyba při načítání dat z Binance:", error);
+        // Text pro chybu - s anti-aliasingem
         ctx.antialias = 'default';
         ctx.textDrawingMode = 'glyph';
         ctx.fillStyle = 'black';
-        ctx.font = '18px "IBM Plex Mono", monospace';
+        ctx.font = '18px "TerminusTTF", monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Chyba načítání dat!', width / 2, height / 2);
         saveImage();
@@ -105,9 +105,10 @@ async function drawChart() {
     ctx.stroke();
 
     // --- Popisky cen na ose Y (pravá strana od osy) ---
+    // ZAPNUTÍ anti-aliasingu pro text
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
-    ctx.font = '12px "IBM Plex Mono", monospace';
+    ctx.font = '12px "TerminusTTF", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     for (let p = minPrice; p <= maxPrice; p += 500) {
@@ -122,6 +123,7 @@ async function drawChart() {
             ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y);
         }
     }
+    // VYPNTUTÍ anti-aliasingu pro další kreslení (čáry, tvary)
     ctx.antialias = 'none';
     ctx.textDrawingMode = 'path';
 
@@ -169,7 +171,7 @@ async function drawChart() {
     ctx.textDrawingMode = 'glyph';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.font = '12px "IBM Plex Mono", monospace';
+    ctx.font = '12px "TerminusTTF", monospace';
     for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
         const x = paddingLeft + (t - minTime) * scaleX;
         if (x < paddingLeft || x > paddingLeft + chartWidth) continue;
@@ -185,7 +187,7 @@ async function drawChart() {
     ctx.textDrawingMode = 'glyph';
     const currentPriceToDisplay = Math.round(lastClosedCandlePrice); // <--- Používáme cenu z poslední uzavřené
     ctx.fillStyle = 'black';
-    ctx.font = '12px "IBM Plex Mono", monospace';
+    ctx.font = '12px "TerminusTTF", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText(currentPriceToDisplay.toLocaleString(), 5, yCurrentPriceFromLastClosedCandle - 5);
@@ -210,7 +212,7 @@ async function drawChart() {
         `Profit: ${profitFormattedText}`
     ];
     const spacingBetweenSegments = 5;
-    ctx.font = `bold 13px "IBM Plex Mono", monospace`;
+    ctx.font = `bold 13px "TerminusTTF", monospace`;
 
     let totalWidthTop = 0;
     const segmentWidthsTop = textSegments.map(segment => {
@@ -260,7 +262,7 @@ async function drawChart() {
         timeframeText
     ];
     const spacingBottomSegments = 5;
-    ctx.font = '12px "IBM Plex Mono", monospace'; // <--- ZŮSTÁVÁ 12px
+    ctx.font = '12px "TerminusTTF", monospace';
 
     let totalBottomWidth = 0;
     const bottomSegmentWidths = bottomTextSegments.map(segment => {
