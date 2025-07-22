@@ -1,23 +1,14 @@
 {
   "name": "btc-chart",
   "version": "1.0.0",
-  "description": "BTC Chart generator for E-Ink display, including Node-Canvas for direct rendering.",
+  "type": "module",
   "main": "render.js",
   "scripts": {
     "start": "node render.js"
   },
-  "keywords": [
-    "btc",
-    "chart",
-    "e-ink",
-    "node-canvas",
-    "crypto"
-  ],
-  "author": "Patrik7s",
-  "license": "ISC",
   "dependencies": {
     "canvas": "^2.11.2",
     "date-fns": "^3.6.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.4"
   }
 }
