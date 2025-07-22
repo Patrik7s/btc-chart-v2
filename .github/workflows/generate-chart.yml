@@ -1,0 +1,35 @@
+name: Generate Chart Every 5 Minutes
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Každých 5 minut
+  workflow_dispatch:       # Pro manuální spuštění
+  push:                    # I po každém pushi
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y libpangocairo-1.0-0
+          npm install
+
+      - name: Run script
+        run: node index.js  # nebo jméno tvého souboru
+
+      - name: Commit and push chart
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add btc-chart.png
+          git commit -m "Automatická aktualizace grafu"
+          git push
