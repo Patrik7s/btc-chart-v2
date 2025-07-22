@@ -55,9 +55,20 @@ async function drawChart() {
     const paddingLeft = 40;
     const paddingRight = 90;
     const paddingTop = 80;
-    const paddingBottom = 80;
+    // Decreased paddingBottom to reduce the gap
+    const paddingBottom = 100; // Adjusted from 120 to 100
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
+
+    if (chartHeight <= 0) {
+        console.error("Chart height is too small or negative. Adjust padding values.");
+        ctx.fillStyle = 'black';
+        ctx.font = '16px "IBMPlexMono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Chyba rozměrů grafu!', width / 2, height / 2);
+        saveImage();
+        return;
+    }
 
     const times = candles.map(c => c.t);
     const minTime = Math.min(...times);
@@ -74,17 +85,20 @@ async function drawChart() {
     ctx.fillStyle = 'black';
     ctx.lineWidth = 1;
 
+    // Draw X-axis (bottom line of the chart)
     ctx.beginPath();
     ctx.moveTo(paddingLeft, paddingTop + chartHeight);
     ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
     ctx.stroke();
 
+    // Draw Y-axis (right line of the chart)
     const axisY_XPosition = paddingLeft + chartWidth;
     ctx.beginPath();
     ctx.moveTo(axisY_XPosition, paddingTop);
     ctx.lineTo(axisY_XPosition, paddingTop + chartHeight);
     ctx.stroke();
 
+    // Draw Y-axis labels
     ctx.font = '16px "IBMPlexMono", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -94,6 +108,7 @@ async function drawChart() {
         ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y);
     }
 
+    // Draw candles
     const barWidth = Math.max(2, chartWidth / candles.length * 0.6);
     candles.forEach(c => {
         const x = paddingLeft + (c.t - minTime) * scaleX;
@@ -119,6 +134,7 @@ async function drawChart() {
         }
     });
 
+    // Draw current price line
     const yCurrentPrice = paddingTop + chartHeight - (lastClosedCandlePrice - adjustedMinPrice) * scaleY;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
@@ -127,10 +143,17 @@ async function drawChart() {
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // Draw current price label on Y-axis
     ctx.font = '16px "IBMPlexMono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(Math.round(lastClosedCandlePrice).toLocaleString(), 5, yCurrentPrice - 5);
+
+
     ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
 
+    // Draw X-axis labels (times)
     const hoursToShow = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
     for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
         const x = paddingLeft + (t - minTime) * scaleX;
@@ -138,20 +161,18 @@ async function drawChart() {
         const hour = new Date(t).getHours();
         if (hoursToShow.includes(hour)) {
             const label = format(new Date(t), 'HH:mm');
-            ctx.fillText(label, x, paddingTop + chartHeight + 18);
+            // X-axis label position, relative to the new paddingBottom
+            ctx.fillText(label, x, paddingTop + chartHeight + 18); 
         }
     }
 
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(Math.round(lastClosedCandlePrice).toLocaleString(), 5, yCurrentPrice - 5);
-
+    // Header information
     const averageBuyPrice = 78000;
     const profit = ((lastClosedCandlePrice - averageBuyPrice) / averageBuyPrice) * 100;
-    ctx.textAlign = 'center';
     ctx.fillText(`BTCUSDT   Nákupní cena: ${averageBuyPrice.toLocaleString()} USDT`, width / 2, 40);
     ctx.fillText(`Aktuální cena: ${Math.round(lastClosedCandlePrice).toLocaleString()} USDT   Profit: ${profit.toFixed(2)}%`, width / 2, 64);
 
+    // Footer information (Last update and Time Frame)
     const lastCandleTime = new Date(candles[candles.length - 1].t);
     const formattedDate = format(lastCandleTime, 'dd.MM.yyyy');
     const cestHours = lastCandleTime.getHours();
@@ -160,6 +181,7 @@ async function drawChart() {
     const nyHours = (utcHours - 4 + 24) % 24;
     const nyMins = lastCandleTime.getUTCMinutes();
 
+    // Y positions for footer text are kept relative to height, which adjusts with paddingBottom
     ctx.fillText(`Poslední aktualizace: ${formattedDate} ${('0' + cestHours).slice(-2)}:${('0' + cestMins).slice(-2)} CEST | ${('0' + nyHours).slice(-2)}:${('0' + nyMins).slice(-2)} NY`, width / 2, height - 35);
     ctx.fillText('Time Frame: 15 minut', width / 2, height - 15);
 
