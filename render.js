@@ -2,6 +2,7 @@ const { createCanvas, loadImage, registerFont } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 const { format } = require('date-fns');
+const sharp = require('sharp'); 
 
 // --- Nastavení Canvasu ---
 const width = 648;
@@ -43,30 +44,31 @@ async function drawChart() {
     ctx.fillRect(0, 0, width, height);
 
     let candles;
-    let lastClosedCandlePrice; // Zde uložíme zavírací cenu poslední UZAVŘENÉ svíčky
+    let lastClosedCandlePrice;
 
     try {
-        candles = await getBinanceCandlesData(); // Načteme data svíček
+        candles = await getBinanceCandlesData();
         if (!candles || candles.length < 2) { 
             throw new Error("Nedostatek dat svíček z Binance API pro určení poslední uzavřené svíčky.");
         }
         lastClosedCandlePrice = candles[candles.length - 2].c; 
     } catch (error) {
         console.error("Chyba při načítání dat z Binance:", error);
-        // Text pro chybu - BEZ ANTI-ALIASINGU
+        ctx.antialias = 'default';
+        ctx.textDrawingMode = 'glyph';
         ctx.fillStyle = 'black';
-        ctx.font = '22px "TerminusTTF", monospace'; // ZVĚTŠENO: z 20px na 22px
+        ctx.font = '14px "TerminusTTF", monospace'; // Font pro chybu
         ctx.textAlign = 'center';
         ctx.fillText('Chyba načítání dat!', width / 2, height / 2);
-        saveImage();
+        saveImage(); // Uloží se i chybový obrázek
         return;
     }
 
     // --- VÝPOČET MĚŘÍTEK A ROZSAHŮ a NOVÉ PADDINGY ---
     const paddingLeft = 40;
     const paddingRight = 90;
-    const paddingTop = 60;
-    const paddingBottom = 75;
+    const paddingTop = 90;
+    const paddingBottom = 90;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
@@ -98,10 +100,9 @@ async function drawChart() {
     ctx.stroke();
 
     // --- Popisky cen na ose Y (pravá strana od osy) ---
-    // ZAPNUTÍ anti-aliasingu pro text
-    ctx.antialias = 'default';
+    ctx.antialias = 'default'; // ZAPNUTO pro text
     ctx.textDrawingMode = 'glyph';
-    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
+    ctx.font = '14px "TerminusTTF", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     for (let p = minPrice; p <= maxPrice; p += 500) {
@@ -116,8 +117,7 @@ async function drawChart() {
             ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y);
         }
     }
-    // VYPNTUTÍ anti-aliasingu pro další kreslení (čáry, tvary)
-    ctx.antialias = 'none';
+    ctx.antialias = 'none'; // VYPNTUTÍ anti-aliasingu
     ctx.textDrawingMode = 'path';
 
     // --- Kreslení svíček (anti-aliasing VYPNUTÝ) ---
@@ -157,22 +157,28 @@ async function drawChart() {
     ctx.setLineDash([]);
 
 
-    // --- Kreslení VŠECH TEXTŮ s ZAPNUTÝM ANTI-ALIASINGEM ---
+    // --- Kreslení VŠECH TEXTŮ s ZAPNUTÝM ANTI-ALIASINGEM (s následným ditheringem Sharpem) ---
 
     // Popisky časů na ose X (dole)
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
+    ctx.font = '14px "TerminusTTF", monospace';
+    // Zobrazovat jen každé 2 hodiny
+    const hoursToShow = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]; 
     for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
         const x = paddingLeft + (t - minTime) * scaleX;
         if (x < paddingLeft || x > paddingLeft + chartWidth) continue;
         const dateAtTime = new Date(t);
-        const label = format(dateAtTime, 'HH:mm');
-        ctx.fillText(label, x, paddingTop + chartHeight + 15);
+        const hour = dateAtTime.getHours(); 
+        
+        if (hoursToShow.includes(hour)) {
+            const label = format(dateAtTime, 'HH:mm');
+            ctx.fillText(label, x, paddingTop + chartHeight + 15);
+        }
     }
-    ctx.antialias = 'none';
+    ctx.antialias = 'none'; // VYPNTUTÍ anti-aliasingu
     ctx.textDrawingMode = 'path';
 
     // Zobrazení AKTUÁLNÍ CENY z poslední UZAVŘENÉ svíčky vlevo u čárkované linky
@@ -180,14 +186,14 @@ async function drawChart() {
     ctx.textDrawingMode = 'glyph';
     const currentPriceToDisplay = Math.round(lastClosedCandlePrice);
     ctx.fillStyle = 'black';
-    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
+    ctx.font = '14px "TerminusTTF", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText(currentPriceToDisplay.toLocaleString(), 5, yCurrentPriceFromLastClosedCandle - 5);
     ctx.antialias = 'none';
     ctx.textDrawingMode = 'path';
 
-    // Horní řádek textů: Ticker, Nákupní cena, Aktuální cena, Profit
+    // Horní řádek textů: Ticker, Nákupní cena, Aktuální cena, Profit (ROZDELENO NA DVA ŘÁDKY)
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
     const averageBuyPrice = 78000;
@@ -198,43 +204,31 @@ async function drawChart() {
     }
     const profitFormattedText = `${profitPercentage.toFixed(2)}%`;
 
-    const textSegments = [
-        'BTCUSDT',
-        `Nákupní cena: ${averageBuyPrice.toLocaleString()} USDT`,
-        `Aktuální cena: ${currentPriceRoundedTop.toLocaleString()} USDT`,
-        `Profit: ${profitFormattedText}`
-    ];
-    const spacingBetweenSegments = 5;
-    ctx.font = `bold 14px "TerminusTTF", monospace`; // ZVĚTŠENO: z 13px na 14px
+    // První řádek nahoře
+    const topTextLine1 = 'BTCUSDT';
+    const fontLine1 = `bold 14px "TerminusTTF", monospace`; 
 
-    let totalWidthTop = 0;
-    const segmentWidthsTop = textSegments.map(segment => {
-        const width = ctx.measureText(segment).width;
-        totalWidthTop += width;
-        return width;
-    });
-    totalWidthTop += (textSegments.length - 1) * spacingBetweenSegments;
-    let currentXTop = (width / 2) - (totalWidthTop / 2);
-    const topRowY = 30;
+    // Druhý řádek nahoře (s cenami a profitem)
+    const topTextLine2 = `Nákupní cena: ${averageBuyPrice.toLocaleString()} USDT Aktuální cena: ${currentPriceRoundedTop.toLocaleString()} USDT Profit: ${profitFormattedText}`;
+    const fontLine2 = `bold 14px "TerminusTTF", monospace`; 
+    const topRowY1 = 20; 
+    const topRowY2 = topRowY1 + 20; // Mezera upravena pro 14px font
 
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.fillText(textSegments[0], currentXTop, topRowY);
-    currentXTop += segmentWidthsTop[0] + spacingBetweenSegments;
-    ctx.fillText(textSegments[1], currentXTop, topRowY);
-    currentXTop += segmentWidthsTop[1] + spacingBetweenSegments;
-    ctx.fillText(textSegments[2], currentXTop, topRowY);
-    currentXTop += segmentWidthsTop[2] + spacingBetweenSegments;
-    if (profitPercentage >= 0) {
-        ctx.fillStyle = 'black';
-    } else {
-        ctx.fillStyle = 'red';
-    }
-    ctx.fillText(textSegments[3], currentXTop, topRowY);
+
+    // Vykreslení prvního řádku
+    ctx.font = fontLine1;
+    ctx.fillText(topTextLine1, width / 2, topRowY1);
+
+    // Vykreslení druhého řádku
+    ctx.font = fontLine2;
+    ctx.fillText(topTextLine2, width / 2, topRowY2);
+
     ctx.antialias = 'none';
     ctx.textDrawingMode = 'path';
 
-    // Spodní řádek textů: "Poslední aktualizace:", Datum, Čas a Time Frame
+    // Spodní řádek textů: "Poslední aktualizace:", Datum, Čas a Time Frame (ROZDELENO NA DVA ŘÁDKY)
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
     const lastCandleTime = new Date(candles[candles.length - 1].t);
@@ -245,35 +239,22 @@ async function drawChart() {
     const nyHours = (utcHours - 4 + 24) % 24;
     const nyMins = lastCandleTime.getUTCMinutes();
 
-    const updateText = `Poslední aktualizace:`;
-    const timeAndDateText = `${formattedDate} ${('0' + cestHours).slice(-2)}:${('0' + cestMins).slice(-2)} CEST | ${('0' + nyHours).slice(-2)}:${('0' + nyMins).slice(-2)} NY`;
-    const timeframeText = `Time Frame: 15 minut`;
+    // První řádek dole
+    const bottomTextLine1 = `Poslední aktualizace: ${formattedDate} ${('0' + cestHours).slice(-2)}:${('0' + cestMins).slice(-2)} CEST | ${('0' + nyHours).slice(-2)}:${('0' + nyMins).slice(-2)} NY`;
+    const fontBottomLine1 = '14px "TerminusTTF", monospace';
+    
+    // Druhý řádek dole
+    const bottomTextLine2 = `Time Frame: 15 minut`;
+    const fontBottomLine2 = '14px "TerminusTTF", monospace';
 
-    const bottomTextSegments = [
-        updateText,
-        timeAndDateText,
-        timeframeText
-    ];
-    const spacingBottomSegments = 5;
-    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
+    const lineSpacingBottom = 20; 
+    const bottomRowY2 = height - 15;
+    const bottomRowY1 = bottomRowY2 - lineSpacingBottom;
 
-    let totalBottomWidth = 0;
-    const bottomSegmentWidths = bottomTextSegments.map(segment => {
-        const width = ctx.measureText(segment).width;
-        totalBottomWidth += width;
-        return width;
-    });
-    totalBottomWidth += (bottomTextSegments.length - 1) * spacingBottomSegments;
-    let currentBottomX = (width / 2) - (totalBottomWidth / 2);
-    const bottomTextY = height - 20;
-
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.fillText(updateText, currentBottomX, bottomTextY);
-    currentBottomX += bottomSegmentWidths[0] + spacingBottomSegments;
-    ctx.fillText(timeAndDateText, currentBottomX, bottomTextY);
-    currentBottomX += bottomSegmentWidths[1] + spacingBottomSegments;
-    ctx.fillText(timeframeText, currentBottomX, bottomTextY);
+    ctx.fillText(bottomTextLine1, width / 2, bottomRowY1);
+    ctx.fillText(bottomTextLine2, width / 2, bottomRowY2);
     ctx.antialias = 'none';
     ctx.textDrawingMode = 'path';
 

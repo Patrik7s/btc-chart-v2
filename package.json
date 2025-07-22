@@ -16,7 +16,8 @@
   "author": "Patrik7s",
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.11.2", 
-    "date-fns": "^3.6.0"  
+    "canvas": "^2.11.2",
+    "date-fns": "^3.6.0",
+    "sharp": "^0.33.5"
   }
 }
