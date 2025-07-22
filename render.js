@@ -1,8 +1,8 @@
-const { createCanvas, registerFont } = require('canvas');
-const fs = require('fs');
-const path = require('path');
-const { format } = require('date-fns');
-const sharp = require('sharp'); 
+import { createCanvas, registerFont } from 'canvas';
+import fs from 'fs';
+import path from 'path';
+import { format } from 'date-fns';
+import sharp from 'sharp';
 
 const width = 648;
 const height = 480;
