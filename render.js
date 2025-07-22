@@ -2,7 +2,14 @@ import { createCanvas, registerFont } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
-import sharp from 'sharp'; 
+import sharp from 'sharp';
+
+// __dirname není definováno v ES module scope, musíme ho vytvořit
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const width = 648;
 const height = 480;
@@ -12,6 +19,7 @@ const ctx = canvas.getContext('2d');
 ctx.antialias = 'none';
 ctx.imageSmoothingEnabled = false;
 ctx.textDrawingMode = 'glyph';
+
 
 const fontPathPlex = path.join(__dirname, 'fonts', 'IBMPlexMono-Regular.ttf');
 try {
@@ -55,8 +63,7 @@ async function drawChart() {
     const paddingLeft = 40;
     const paddingRight = 90;
     const paddingTop = 80;
-    // Decreased paddingBottom to reduce the gap
-    const paddingBottom = 100; // Adjusted from 120 to 100
+    const paddingBottom = 100;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
@@ -161,8 +168,7 @@ async function drawChart() {
         const hour = new Date(t).getHours();
         if (hoursToShow.includes(hour)) {
             const label = format(new Date(t), 'HH:mm');
-            // X-axis label position, relative to the new paddingBottom
-            ctx.fillText(label, x, paddingTop + chartHeight + 18); 
+            ctx.fillText(label, x, paddingTop + chartHeight + 18);
         }
     }
 
@@ -181,7 +187,6 @@ async function drawChart() {
     const nyHours = (utcHours - 4 + 24) % 24;
     const nyMins = lastCandleTime.getUTCMinutes();
 
-    // Y positions for footer text are kept relative to height, which adjusts with paddingBottom
     ctx.fillText(`Poslední aktualizace: ${formattedDate} ${('0' + cestHours).slice(-2)}:${('0' + cestMins).slice(-2)} CEST | ${('0' + nyHours).slice(-2)}:${('0' + nyMins).slice(-2)} NY`, width / 2, height - 35);
     ctx.fillText('Time Frame: 15 minut', width / 2, height - 15);
 
