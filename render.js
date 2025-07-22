@@ -1,7 +1,7 @@
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const fs = require('fs');
 const path = require('path');
-const { format } = require('date-fns'); // Pro formátování dat a časů
+const { format } = require('date-fns');
 
 // --- Nastavení Canvasu ---
 const width = 648;
@@ -9,75 +9,71 @@ const height = 480;
 const canvas = createCanvas(width, height);
 const ctx = canvas.getContext('2d');
 
-// --- VYPNUTÍ ANTI-ALIASINGU ---
+// --- GLOBÁLNÍ VÝCHOZÍ NASTAVENÍ: VYPNUTÍ ANTI-ALIASINGU ---
 ctx.antialias = 'none'; // Pro tvary a čáry
-ctx.imageSmoothingEnabled = false; // Pro vykreslování obrázků (i když to zde přímo nevyužíváme)
-ctx.textDrawingMode = 'path'; // Pro text - nutí vykreslování textu jako vektorových cest
-// ...
+ctx.imageSmoothingEnabled = false; // Pro vykreslování obrázků
+ctx.textDrawingMode = 'path'; // Výchozí pro text
 
-// --- Načtení fontu Roboto (pokud ho chcete použít) ---
-// Předpokládá, že font máte lokálně v projektu, např. v adresáři 'fonts'
-// Budete muset stáhnout soubor .ttf fontu a umístit ho do projektu.
-// Např.: Následující cesty předpokládají, že máte fonty ve složce 'fonts'
-const fontPathRegular = path.join(__dirname, 'fonts', 'Roboto-Regular.ttf');
-const fontPathBold = path.join(__dirname, 'fonts', 'Roboto-Bold.ttf');
+
+// --- Načtení fontu IBM Plex Mono ---
+const fontPathPlexMonoRegular = path.join(__dirname, 'fonts', 'IBMPlexMono-Regular.ttf');
+const fontPathPlexMonoBold = path.join(__dirname, 'fonts', 'IBMPlexMono-Bold.ttf');
 
 try {
-    registerFont(fontPathRegular, { family: 'Roboto', weight: 'normal' });
-    registerFont(fontPathBold, { family: 'Roboto', weight: 'bold' });
+    registerFont(fontPathPlexMonoRegular, { family: 'IBM Plex Mono', weight: 'normal' });
+    registerFont(fontPathPlexMonoBold, { family: 'IBM Plex Mono', weight: 'bold' });
 } catch (error) {
-    console.warn(`Varování: Font Roboto nebyl nalezen. Zkontrolujte cestu k souborům fontů. Použije se výchozí font. Chyba: ${error.message}`);
+    console.warn(`Varování: Font IBM Plex Mono nebyl nalezen. Zkontrolujte cestu k souborům fontů. Použije se výchozí font. Chyba: ${error.message}`);
 }
 
-
-// --- Funkce pro získání dat z Binance (stejná jako v chart.html) ---
-async function getBinanceData() {
+// --- Funkce pro získání dat svíček z Binance ---
+async function getBinanceCandlesData() {
     const end = Math.floor(Date.now() / 1000);
-    const start = end - 12 * 60 * 60; // posledních 12 hodin
+    const start = end - 12 * 60 * 60;
     const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&startTime=${start * 1000}&endTime=${end * 1000}`;
-    const response = await fetch(url); // fetch je v Node.js >= 18 nativní
+    const response = await fetch(url);
     const raw = await response.json();
     return raw.map(d => ({
-        t: d[0],
-        o: +d[1],
-        h: +d[2],
-        l: +d[3],
-        c: +d[4]
+        t: d[0], o: +d[1], h: +d[2], l: +d[3], c: +d[4]
     }));
 }
 
+// --- Funkce pro získání AKTUÁLNÍ TRŽNÍ CENY je ODSTRANĚNA ---
+
+
 // --- Hlavní funkce pro kreslení grafu ---
 async function drawChart() {
-    // 1. Vyplnění pozadí (bílé)
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Načtení dat
     let candles;
+    let lastClosedCandlePrice; // Zde uložíme zavírací cenu poslední UZAVŘENÉ svíčky
+
     try {
-        candles = await getBinanceData();
-        if (!candles || candles.length === 0) {
-            throw new Error("Žádná data z Binance API.");
+        candles = await getBinanceCandlesData(); // Načteme data svíček
+        // <--- ZMĚNA: Kontrolujeme, zda máme alespoň 2 svíčky pro spolehlivou poslední uzavřenou
+        if (!candles || candles.length < 2) { 
+            throw new Error("Nedostatek dat svíček z Binance API pro určení poslední uzavřené svíčky.");
         }
+        // <--- ZMĚNA: Používáme zavírací cenu předposlední svíčky, která by měla být uzavřená
+        lastClosedCandlePrice = candles[candles.length - 2].c; 
     } catch (error) {
         console.error("Chyba při načítání dat z Binance:", error);
-        // Zde můžete vykreslit chybovou zprávu na plátno
+        ctx.antialias = 'default';
+        ctx.textDrawingMode = 'glyph';
         ctx.fillStyle = 'black';
-        ctx.font = '20px Roboto, sans-serif';
+        ctx.font = '18px "IBM Plex Mono", monospace';
         ctx.textAlign = 'center';
         ctx.fillText('Chyba načítání dat!', width / 2, height / 2);
-        // Uloží i chybný obrázek
         saveImage();
-        return; // Ukončí funkci
+        return;
     }
 
-    // Zde by začala VLASTNÍ LOGIKA vykreslování grafu:
-    // ----------------------------------------------------
-    // --- VÝPOČET MĚŘÍTEK A ROZSAHŮ (podobně jako v chart.html) ---
-    const paddingLeft = 20;
-    const paddingRight = 70;
-    const paddingTop = 45;
-    const paddingBottom = 60;
+    // --- VÝPOČET MĚŘÍTEK A ROZSAHŮ a NOVÉ PADDINGY ---
+    const paddingLeft = 40;
+    const paddingRight = 90;
+    const paddingTop = 60;
+    const paddingBottom = 75;
     const chartWidth = width - paddingLeft - paddingRight;
     const chartHeight = height - paddingTop - paddingBottom;
 
@@ -92,30 +88,32 @@ async function drawChart() {
     const scaleX = chartWidth / (maxTime - minTime);
     const scaleY = chartHeight / (maxPrice - adjustedMinPrice);
 
-    // --- Kreslení os a popisků ---
     ctx.strokeStyle = 'black';
     ctx.fillStyle = 'black';
-    ctx.lineWidth = 1; // Tloušťka čar
+    ctx.lineWidth = 1;
 
-    // Osa X (vodorovná dole)
+    // --- Kreslení os (anti-aliasing VYPNUTÝ) ---
     ctx.beginPath();
     ctx.moveTo(paddingLeft, paddingTop + chartHeight);
     ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
     ctx.stroke();
 
-    // Osa Y (svislá vpravo)
     const axisY_XPosition = paddingLeft + chartWidth;
     ctx.beginPath();
     ctx.moveTo(axisY_XPosition, paddingTop);
     ctx.lineTo(axisY_XPosition, paddingTop + chartHeight);
     ctx.stroke();
 
-    // Popisky cen na ose Y (pravá strana)
-    ctx.font = '12px Roboto, sans-serif';
+    // --- Popisky cen na ose Y (pravá strana od osy) ---
+    ctx.antialias = 'default';
+    ctx.textDrawingMode = 'glyph';
+    ctx.font = '12px "IBM Plex Mono", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     for (let p = minPrice; p <= maxPrice; p += 500) {
         const y = paddingTop + chartHeight - (p - adjustedMinPrice) * scaleY;
+        if (y < paddingTop || y > paddingTop + chartHeight + 10) continue;
+
         if (p === minPrice) {
             ctx.textBaseline = 'bottom';
             ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y + 2);
@@ -124,19 +122,10 @@ async function drawChart() {
             ctx.fillText(p.toLocaleString(), axisY_XPosition + 5, y);
         }
     }
+    ctx.antialias = 'none';
+    ctx.textDrawingMode = 'path';
 
-    // Popisky časů na ose X (dole)
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
-        const x = paddingLeft + (t - minTime) * scaleX;
-        if (x < paddingLeft || x > paddingLeft + chartWidth) continue;
-        const dateAtTime = new Date(t);
-        const label = format(dateAtTime, 'HH:mm'); // Použijte date-fns pro formátování
-        ctx.fillText(label, x, paddingTop + chartHeight + 5);
-    }
-
-    // --- Kreslení svíček ---
+    // --- Kreslení svíček (anti-aliasing VYPNUTÝ) ---
     const barWidth = Math.max(2, chartWidth / candles.length * 0.6);
     candles.forEach(c => {
         const x = paddingLeft + (c.t - minTime) * scaleX;
@@ -145,13 +134,13 @@ async function drawChart() {
         const yHigh = paddingTop + chartHeight - (c.h - adjustedMinPrice) * scaleY;
         const yLow = paddingTop + chartHeight - (c.l - adjustedMinPrice) * scaleY;
 
-        // Kreslení knotů
+        if (x - barWidth / 2 < paddingLeft || x + barWidth / 2 > paddingLeft + chartWidth) return;
+
         ctx.beginPath();
         ctx.moveTo(x, yHigh);
         ctx.lineTo(x, yLow);
         ctx.stroke();
 
-        // Kreslení těla svíčky
         const xBar = x - barWidth / 2;
         if (c.c >= c.o) {
             ctx.fillStyle = 'black';
@@ -159,46 +148,69 @@ async function drawChart() {
         } else {
             ctx.fillStyle = 'white';
             ctx.fillRect(xBar, yClose, barWidth, yOpen - yClose);
-            ctx.strokeRect(xBar, yClose, barWidth, yOpen - yClose); // Okraj pro bílé svíčky
+            ctx.strokeRect(xBar, yClose, barWidth, yOpen - yClose);
         }
     });
 
-    // --- Čárkovaná linka aktuální ceny a popisek ---
-    const currentPrice = candles[candles.length - 1].c;
-    const yCurrentPrice = paddingTop + chartHeight - (currentPrice - adjustedMinPrice) * scaleY;
-
-    ctx.setLineDash([5, 5]); // Nastaví delší čárky
+    // --- Čárkovaná linka AKTUÁLNÍ CENY z poslední UZAVŘENÉ svíčky (anti-aliasing VYPNUTÝ) ---
+    const yCurrentPriceFromLastClosedCandle = paddingTop + chartHeight - (lastClosedCandlePrice - adjustedMinPrice) * scaleY; // <--- Využíváme cenu z poslední uzavřené
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.moveTo(paddingLeft, yCurrentPrice);
-    ctx.lineTo(paddingLeft + chartWidth, yCurrentPrice);
+    ctx.moveTo(paddingLeft, yCurrentPriceFromLastClosedCandle);
+    ctx.lineTo(paddingLeft + chartWidth, yCurrentPriceFromLastClosedCandle);
     ctx.stroke();
-    ctx.setLineDash([]); // Resetovat
+    ctx.setLineDash([]);
 
-    // Popisek aktuální ceny vlevo
+
+    // --- Kreslení VŠECH TEXTŮ s ZAPNUTÝM ANTI-ALIASINGEM ---
+
+    // Popisky časů na ose X (dole)
+    ctx.antialias = 'default';
+    ctx.textDrawingMode = 'glyph';
+    ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.font = '12px Roboto, sans-serif';
+    ctx.font = '12px "IBM Plex Mono", monospace';
+    for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
+        const x = paddingLeft + (t - minTime) * scaleX;
+        if (x < paddingLeft || x > paddingLeft + chartWidth) continue;
+        const dateAtTime = new Date(t);
+        const label = format(dateAtTime, 'HH:mm');
+        ctx.fillText(label, x, paddingTop + chartHeight + 15);
+    }
+    ctx.antialias = 'none';
+    ctx.textDrawingMode = 'path';
+
+    // Zobrazení AKTUÁLNÍ CENY z poslední UZAVŘENÉ svíčky vlevo u čárkované linky
+    ctx.antialias = 'default';
+    ctx.textDrawingMode = 'glyph';
+    const currentPriceToDisplay = Math.round(lastClosedCandlePrice); // <--- Používáme cenu z poslední uzavřené
+    ctx.fillStyle = 'black';
+    ctx.font = '12px "IBM Plex Mono", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(Math.round(currentPrice).toLocaleString(), 5, yCurrentPrice - 5);
+    ctx.fillText(currentPriceToDisplay.toLocaleString(), 5, yCurrentPriceFromLastClosedCandle - 5);
+    ctx.antialias = 'none';
+    ctx.textDrawingMode = 'path';
 
-    // --- Horní a spodní informační texty ---
-    // Horní texty
+    // Horní řádek textů: Ticker, Nákupní cena, Aktuální cena, Profit
+    ctx.antialias = 'default';
+    ctx.textDrawingMode = 'glyph';
     const averageBuyPrice = 78000;
-    const currentPriceRounded = Math.round(currentPrice);
+    const currentPriceRoundedTop = Math.round(lastClosedCandlePrice); // <--- Používáme cenu z poslední uzavřené
     let profitPercentage = 0;
     if (averageBuyPrice > 0) {
-        profitPercentage = ((currentPrice - averageBuyPrice) / averageBuyPrice) * 100;
+        profitPercentage = ((lastClosedCandlePrice - averageBuyPrice) / averageBuyPrice) * 100; // <--- Výpočet profitu s cenou z poslední uzavřené
     }
     const profitFormattedText = `${profitPercentage.toFixed(2)}%`;
 
     const textSegments = [
         'BTCUSDT',
         `Nákupní cena: ${averageBuyPrice.toLocaleString()} USDT`,
-        `Aktuální cena: ${currentPriceRounded.toLocaleString()} USDT`,
+        `Aktuální cena: ${currentPriceRoundedTop.toLocaleString()} USDT`,
         `Profit: ${profitFormattedText}`
     ];
-    const spacingBetweenSegments = 20;
-    ctx.font = 'bold 12px Roboto, sans-serif';
+    const spacingBetweenSegments = 5;
+    ctx.font = `bold 13px "IBM Plex Mono", monospace`;
 
     let totalWidthTop = 0;
     const segmentWidthsTop = textSegments.map(segment => {
@@ -208,7 +220,7 @@ async function drawChart() {
     });
     totalWidthTop += (textSegments.length - 1) * spacingBetweenSegments;
     let currentXTop = (width / 2) - (totalWidthTop / 2);
-    const topRowY = 20;
+    const topRowY = 30;
 
     ctx.textAlign = 'left';
     ctx.fillStyle = 'black';
@@ -224,9 +236,13 @@ async function drawChart() {
         ctx.fillStyle = 'red';
     }
     ctx.fillText(textSegments[3], currentXTop, topRowY);
+    ctx.antialias = 'none';
+    ctx.textDrawingMode = 'path';
 
-    // Spodní texty
-    const lastCandleTime = new Date(candles[candles.length - 1].t);
+    // Spodní řádek textů: "Poslední aktualizace:", Datum, Čas a Time Frame
+    ctx.antialias = 'default';
+    ctx.textDrawingMode = 'glyph';
+    const lastCandleTime = new Date(candles[candles.length - 1].t); // Čas poslední svíčky (i když otevřená)
     const formattedDate = format(lastCandleTime, 'dd.MM.yyyy');
     const cestHours = lastCandleTime.getHours();
     const cestMins = lastCandleTime.getMinutes();
@@ -243,8 +259,8 @@ async function drawChart() {
         timeAndDateText,
         timeframeText
     ];
-    const spacingBottomSegments = 20;
-    ctx.font = '12px Roboto, sans-serif';
+    const spacingBottomSegments = 5;
+    ctx.font = '12px "IBM Plex Mono", monospace'; // <--- ZŮSTÁVÁ 12px
 
     let totalBottomWidth = 0;
     const bottomSegmentWidths = bottomTextSegments.map(segment => {
@@ -263,25 +279,22 @@ async function drawChart() {
     ctx.fillText(timeAndDateText, currentBottomX, bottomTextY);
     currentBottomX += bottomSegmentWidths[1] + spacingBottomSegments;
     ctx.fillText(timeframeText, currentBottomX, bottomTextY);
+    ctx.antialias = 'none';
+    ctx.textDrawingMode = 'path';
 
 
-    // ----------------------------------------------------
-    // 3. Uložení obrázku jako 1-bit černobílého PNG
-    saveImage();
+    saveImage(); // Uloží obrázek
 }
 
 function saveImage() {
-    // Vytvoříme buffer z canvasu jako PNG
-    // Použijeme toFormat s palette: true a colors: 2 pro 1-bit černobílý PNG
-    const buffer = canvas.toBuffer('image/png', { 
-        compressionLevel: 9, 
+    const buffer = canvas.toBuffer('image/png', {
+        compressionLevel: 9,
         filters: canvas.PNG_FILTER_NONE,
-        palette: true, 
-        colors: 2 
+        palette: true,
+        colors: 2
     });
     fs.writeFileSync('btc-chart.png', buffer);
     console.log('Graf byl úspěšně vygenerován jako 1-bit černobílý PNG pomocí node-canvas.');
 }
 
-// Spustit kreslení
 drawChart();
