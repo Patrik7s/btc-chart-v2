@@ -37,9 +37,6 @@ async function getBinanceCandlesData() {
     }));
 }
 
-// --- Funkce pro získání AKTUÁLNÍ TRŽNÍ CENY je ZDE ODSTRANĚNA, protože ji už nechceme používat ---
-
-
 // --- Hlavní funkce pro kreslení grafu ---
 async function drawChart() {
     ctx.fillStyle = 'white';
@@ -50,19 +47,15 @@ async function drawChart() {
 
     try {
         candles = await getBinanceCandlesData(); // Načteme data svíček
-        // <--- ZMĚNA: Kontrolujeme, zda máme alespoň 2 svíčky pro spolehlivou poslední uzavřenou
         if (!candles || candles.length < 2) { 
             throw new Error("Nedostatek dat svíček z Binance API pro určení poslední uzavřené svíčky.");
         }
-        // <--- ZMĚNA: Používáme zavírací cenu předposlední svíčky, která by měla být uzavřená
         lastClosedCandlePrice = candles[candles.length - 2].c; 
     } catch (error) {
         console.error("Chyba při načítání dat z Binance:", error);
-        // Text pro chybu - s anti-aliasingem
-        ctx.antialias = 'default';
-        ctx.textDrawingMode = 'glyph';
+        // Text pro chybu - BEZ ANTI-ALIASINGU
         ctx.fillStyle = 'black';
-        ctx.font = '18px "TerminusTTF", monospace';
+        ctx.font = '22px "TerminusTTF", monospace'; // ZVĚTŠENO: z 20px na 22px
         ctx.textAlign = 'center';
         ctx.fillText('Chyba načítání dat!', width / 2, height / 2);
         saveImage();
@@ -108,7 +101,7 @@ async function drawChart() {
     // ZAPNUTÍ anti-aliasingu pro text
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
-    ctx.font = '12px "TerminusTTF", monospace';
+    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     for (let p = minPrice; p <= maxPrice; p += 500) {
@@ -155,7 +148,7 @@ async function drawChart() {
     });
 
     // --- Čárkovaná linka AKTUÁLNÍ CENY z poslední UZAVŘENÉ svíčky (anti-aliasing VYPNUTÝ) ---
-    const yCurrentPriceFromLastClosedCandle = paddingTop + chartHeight - (lastClosedCandlePrice - adjustedMinPrice) * scaleY; // <--- Využíváme cenu z poslední uzavřené
+    const yCurrentPriceFromLastClosedCandle = paddingTop + chartHeight - (lastClosedCandlePrice - adjustedMinPrice) * scaleY;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.moveTo(paddingLeft, yCurrentPriceFromLastClosedCandle);
@@ -171,7 +164,7 @@ async function drawChart() {
     ctx.textDrawingMode = 'glyph';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'black';
-    ctx.font = '12px "TerminusTTF", monospace';
+    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
     for (let t = Math.ceil(minTime / (1000 * 60 * 60)) * (1000 * 60 * 60); t <= maxTime; t += (1000 * 60 * 60)) {
         const x = paddingLeft + (t - minTime) * scaleX;
         if (x < paddingLeft || x > paddingLeft + chartWidth) continue;
@@ -185,9 +178,9 @@ async function drawChart() {
     // Zobrazení AKTUÁLNÍ CENY z poslední UZAVŘENÉ svíčky vlevo u čárkované linky
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
-    const currentPriceToDisplay = Math.round(lastClosedCandlePrice); // <--- Používáme cenu z poslední uzavřené
+    const currentPriceToDisplay = Math.round(lastClosedCandlePrice);
     ctx.fillStyle = 'black';
-    ctx.font = '12px "TerminusTTF", monospace';
+    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
     ctx.fillText(currentPriceToDisplay.toLocaleString(), 5, yCurrentPriceFromLastClosedCandle - 5);
@@ -198,10 +191,10 @@ async function drawChart() {
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
     const averageBuyPrice = 78000;
-    const currentPriceRoundedTop = Math.round(lastClosedCandlePrice); // <--- Používáme cenu z poslední uzavřené
+    const currentPriceRoundedTop = Math.round(lastClosedCandlePrice);
     let profitPercentage = 0;
     if (averageBuyPrice > 0) {
-        profitPercentage = ((lastClosedCandlePrice - averageBuyPrice) / averageBuyPrice) * 100; // <--- Výpočet profitu s cenou z poslední uzavřené
+        profitPercentage = ((lastClosedCandlePrice - averageBuyPrice) / averageBuyPrice) * 100;
     }
     const profitFormattedText = `${profitPercentage.toFixed(2)}%`;
 
@@ -212,7 +205,7 @@ async function drawChart() {
         `Profit: ${profitFormattedText}`
     ];
     const spacingBetweenSegments = 5;
-    ctx.font = `bold 13px "TerminusTTF", monospace`;
+    ctx.font = `bold 14px "TerminusTTF", monospace`; // ZVĚTŠENO: z 13px na 14px
 
     let totalWidthTop = 0;
     const segmentWidthsTop = textSegments.map(segment => {
@@ -244,7 +237,7 @@ async function drawChart() {
     // Spodní řádek textů: "Poslední aktualizace:", Datum, Čas a Time Frame
     ctx.antialias = 'default';
     ctx.textDrawingMode = 'glyph';
-    const lastCandleTime = new Date(candles[candles.length - 1].t); // Čas poslední svíčky (i když otevřená)
+    const lastCandleTime = new Date(candles[candles.length - 1].t);
     const formattedDate = format(lastCandleTime, 'dd.MM.yyyy');
     const cestHours = lastCandleTime.getHours();
     const cestMins = lastCandleTime.getMinutes();
@@ -262,7 +255,7 @@ async function drawChart() {
         timeframeText
     ];
     const spacingBottomSegments = 5;
-    ctx.font = '12px "TerminusTTF", monospace';
+    ctx.font = '13px "TerminusTTF", monospace'; // ZVĚTŠENO: z 12px na 13px
 
     let totalBottomWidth = 0;
     const bottomSegmentWidths = bottomTextSegments.map(segment => {
