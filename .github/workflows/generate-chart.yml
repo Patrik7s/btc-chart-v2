@@ -39,9 +39,11 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-          git pull --rebase origin main || echo "Pull failed or not needed"
-
           git add btc-chart.png
-          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit, skipping commit"
 
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
+          # Použijeme git push --force-with-lease
+          # To je bezpečnější než --force, protože pushne jen tehdy, pokud se vzdálená historie
+          # nezměnila od posledního fetch (který zajistil actions/checkout s fetch-depth: 0).
+          # Tím se vyhneme potenciálnímu přepsání cizích změn.
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Failed to force-push, there might be new commits on remote."
