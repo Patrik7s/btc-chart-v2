@@ -1,22 +1,22 @@
+
 name: Render BTC Chart
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *'  # Spouští každých 5 minut
   workflow_dispatch:
 
 jobs:
   render:
     runs-on: ubuntu-latest
-
+    
+    # NOVÁ DŮLEŽITÁ ČÁST: Přidání oprávnění pro GITHUB_TOKEN
     permissions:
-      contents: write
+      contents: write # Toto dává botovi oprávnění k zápisu do repozitáře
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -27,25 +27,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
-          npm ci
-
+          npm install
       - name: Run render.js
         run: node render.js
 
       - name: Commit and push chart
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -x  # pro ladění
-
           git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-
-          # Před jakýmkoliv commitem MUSÍ být aktuální historie!
-          git pull origin main --rebase
-
+          git config --global user.email "actions@github.com" # Doporučený e-mail pro actions
           git add btc-chart.png
-          git diff --staged --quiet && echo "No changes to commit." && exit 0
-          git commit -m "Auto update chart [skip ci]"
-
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease
+          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit" # Zajišťuje, že se workflow nescvrkne, pokud nejsou změny
+          git push
