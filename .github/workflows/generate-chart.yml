@@ -40,10 +40,10 @@ jobs:
           git config --global user.email "actions@github.com"
 
           git add btc-chart.png
+          # Commit pouze pokud jsou změny, jinak krok přeskoč
           git commit -m "Auto update chart [skip ci]" || echo "No changes to commit, skipping commit"
 
-          # Použijeme git push --force-with-lease
-          # To je bezpečnější než --force, protože pushne jen tehdy, pokud se vzdálená historie
-          # nezměnila od posledního fetch (který zajistil actions/checkout s fetch-depth: 0).
-          # Tím se vyhneme potenciálnímu přepsání cizích změn.
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Failed to force-push, there might be new commits on remote."
+          # DŮLEŽITÉ: Použijte --force-with-lease. Tím se předejde chybě "rejected"
+          # Bude to pushovat pouze v případě, že se vzdálená větev nezměnila od posledního fetch.
+          # To je bezpečné, protože actions/checkout s fetch-depth: 0 stáhne celou historii.
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Failed to push, check for concurrent runs or unexpected remote changes."
