@@ -8,6 +8,10 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
+    
+    # NOVÁ DŮLEŽITÁ ČÁST: Přidání oprávnění pro GITHUB_TOKEN
+    permissions:
+      contents: write # Toto dává botovi oprávnění k zápisu do repozitáře
 
     steps:
       - name: Checkout repo
@@ -30,7 +34,7 @@ jobs:
       - name: Commit and push chart
         run: |
           git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git config --global user.email "actions@github.com" # Doporučený e-mail pro actions
           git add btc-chart.png
-          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit" # Zajišťuje, že se workflow nescvrkne, pokud nejsou změny
           git push
