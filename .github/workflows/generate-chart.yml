@@ -2,7 +2,7 @@ name: Render BTC Chart
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Spouští každých 5 minut
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # GitHub Actions smí pushovat
+      contents: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # stáhne celou historii, nutné pro správné pushnutí
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -39,7 +39,10 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
+          # Přetáhneme si nejnovější změny, které mezitím proběhly
+          git pull origin main --rebase || echo "Pull selhal nebo nebyl potřeba"
+
           git add btc-chart.png
           git commit -m "Auto update chart [skip ci]" || echo "No changes to commit"
 
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Push failed"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
