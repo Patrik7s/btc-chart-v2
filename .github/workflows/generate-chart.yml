@@ -36,13 +36,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -x  # pro ladění
+
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-          # Přetáhneme si nejnovější změny, které mezitím proběhly
-          git pull origin main --rebase || echo "Pull selhal nebo nebyl potřeba"
+          # Před jakýmkoliv commitem MUSÍ být aktuální historie!
+          git pull origin main --rebase
 
           git add btc-chart.png
-          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit"
+          git diff --staged --quiet && echo "No changes to commit." && exit 0
+          git commit -m "Auto update chart [skip ci]"
 
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease
