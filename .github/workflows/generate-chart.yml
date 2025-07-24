@@ -46,4 +46,4 @@ jobs:
           # DŮLEŽITÉ: Použijte --force-with-lease. Tím se předejde chybě "rejected"
           # Bude to pushovat pouze v případě, že se vzdálená větev nezměnila od posledního fetch.
           # To je bezpečné, protože actions/checkout s fetch-depth: 0 stáhne celou historii.
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Failed to push, check for concurrent runs or unexpected remote changes."
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force || echo "Failed to force push, investigate further."
