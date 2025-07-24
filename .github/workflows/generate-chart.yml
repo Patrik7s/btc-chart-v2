@@ -2,7 +2,7 @@ name: Render BTC Chart
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *'  # Spouští každých 5 minut
   workflow_dispatch:
 
 jobs:
@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # nutné pro push s GitHub tokenem
+      contents: write  # GitHub Actions smí pushovat
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # DŮLEŽITÉ – stáhne celou historii, nutné pro git pull
+          fetch-depth: 0  # stáhne celou historii, nutné pro správné pushnutí
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -40,10 +40,6 @@ jobs:
           git config --global user.email "actions@github.com"
 
           git add btc-chart.png
-          # Commit pouze pokud jsou změny, jinak krok přeskoč
-          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit, skipping commit"
+          git commit -m "Auto update chart [skip ci]" || echo "No changes to commit"
 
-          # DŮLEŽITÉ: Použijte --force-with-lease. Tím se předejde chybě "rejected"
-          # Bude to pushovat pouze v případě, že se vzdálená větev nezměnila od posledního fetch.
-          # To je bezpečné, protože actions/checkout s fetch-depth: 0 stáhne celou historii.
-          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force || echo "Failed to force push, investigate further."
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main --force-with-lease || echo "Push failed"
