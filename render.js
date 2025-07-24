@@ -40,25 +40,33 @@ async function getBinanceCandlesData() {
 }
 
 async function drawChart() {
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = 'white'; //
+    ctx.fillRect(0, 0, width, height); //
 
-    let candles;
-    let lastClosedCandlePrice;
+    let candles; //
+    let lastClosedCandlePrice; //
 
     try {
-        candles = await getBinanceCandlesData();
-        if (!candles || candles.length < 2) throw new Error("Nedostatek dat svíček.");
-        lastClosedCandlePrice = candles[candles.length - 2].c;
+        candles = await getBinanceCandlesData(); //
+        if (!candles || candles.length < 2) { //
+            console.error("API Response:", candles); // Přidáno: loguje, co vrátilo API
+            throw new Error("Nedostatek dat svíček."); //
+        }
+        lastClosedCandlePrice = candles[candles.length - 2].c; //
     } catch (error) {
-        console.error("Chyba při načítání dat:", error);
-        ctx.fillStyle = 'black';
-        ctx.font = '16px "IBMPlexMono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('Chyba načítání dat!', width / 2, height / 2);
-        saveImage();
-        return;
+        console.error("Chyba při načítání dat:", error); //
+        // Přidáno: Detailnější logování chyby
+        console.error("Detaily chyby:", error.message, error.stack);
+        ctx.fillStyle = 'black'; //
+        ctx.font = '16px "IBMPlexMono", monospace'; //
+        ctx.textAlign = 'center'; //
+        ctx.fillText('Chyba načítání dat!', width / 2, height / 2); //
+        saveImage(); //
+        return; //
     }
+
+    // ... zbytek vašeho kódu pro vykreslování grafu ...
+}
 
     const paddingLeft = 40;
     const paddingRight = 90;
